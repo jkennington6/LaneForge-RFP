@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
 import { createServiceSupabaseClient } from "@/lib/supabase";
-
+import { RfpInvitesAndMessages } from "@/components/rfp-invites-and-messages";
 type RfpRow = {
   id: string;
   customer_id: string;
@@ -68,12 +68,12 @@ function getWeightBreak(weight: number | null) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "—";
+  if (!value) return "Ã¢â‚¬â€";
   return new Date(value).toLocaleDateString();
 }
 
 function money(value: number | null) {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "Ã¢â‚¬â€";
 
   return value.toLocaleString("en-US", {
     style: "currency",
@@ -197,7 +197,7 @@ export default async function RfpDetailPage({
     <div>
       <SectionHeader
         title={rfp.name}
-        description={`${rfp.mode} RFP • ${rfp.status} • Bid due ${formatDate(rfp.bid_due_date)}`}
+        description={`${rfp.mode} RFP Ã¢â‚¬Â¢ ${rfp.status} Ã¢â‚¬Â¢ Bid due ${formatDate(rfp.bid_due_date)}`}
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -250,13 +250,13 @@ export default async function RfpDetailPage({
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-slate-950">Pricing Assumptions</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Format: {rfp.required_pricing_format ?? "—"}
+            Format: {rfp.required_pricing_format ?? "Ã¢â‚¬â€"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Fuel: {rfp.fuel_assumptions ?? "—"}
+            Fuel: {rfp.fuel_assumptions ?? "Ã¢â‚¬â€"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Accessorials: {rfp.accessorial_assumptions ?? "—"}
+            Accessorials: {rfp.accessorial_assumptions ?? "Ã¢â‚¬â€"}
           </p>
         </div>
       </div>
@@ -359,20 +359,20 @@ export default async function RfpDetailPage({
             {lanes.map((lane) => (
               <tr key={lane.id}>
                 <td className="px-4 py-3 font-semibold text-slate-950">
-                  {lane.lane_state_pair ?? "—"}
+                  {lane.lane_state_pair ?? "Ã¢â‚¬â€"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {lane.origin_city ?? "—"}, {lane.origin_state ?? "—"} {lane.origin_zip ?? ""}
+                  {lane.origin_city ?? "Ã¢â‚¬â€"}, {lane.origin_state ?? "Ã¢â‚¬â€"} {lane.origin_zip ?? ""}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {lane.destination_city ?? "—"}, {lane.destination_state ?? "—"} {lane.destination_zip ?? ""}
+                  {lane.destination_city ?? "Ã¢â‚¬â€"}, {lane.destination_state ?? "Ã¢â‚¬â€"} {lane.destination_zip ?? ""}
                 </td>
-                <td className="px-4 py-3 text-slate-600">{lane.weight ?? "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.weight_break ?? "—"}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.freight_class ?? "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.weight ?? "Ã¢â‚¬â€"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.weight_break ?? "Ã¢â‚¬â€"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.freight_class ?? "Ã¢â‚¬â€"}</td>
                 <td className="px-4 py-3 text-slate-600">{lane.shipment_count}</td>
                 <td className="px-4 py-3 text-slate-600">{money(lane.historical_spend)}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.current_carrier ?? "—"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.current_carrier ?? "Ã¢â‚¬â€"}</td>
               </tr>
             ))}
 
