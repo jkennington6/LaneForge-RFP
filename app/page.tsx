@@ -1,5 +1,5 @@
-﻿import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import Link from "next/link";
+import { Show, UserButton } from "@clerk/nextjs";
 import {
   ArrowRight,
   FileSpreadsheet,
@@ -31,9 +31,7 @@ const features = [
   },
 ];
 
-export default async function LandingPage() {
-  const { userId } = await auth();
-
+export default function LandingPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <section className="mx-auto max-w-6xl px-6 py-14">
@@ -60,30 +58,32 @@ export default async function LandingPage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            {userId ? (
+            <Show when="signed-in">
               <Link
                 href="/portal"
                 className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-slate-950"
               >
                 Open portal <ArrowRight className="h-4 w-4" />
               </Link>
-            ) : (
-              <>
-                <Link
-                  href="/sign-in"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-slate-950"
-                >
-                  Sign in <ArrowRight className="h-4 w-4" />
-                </Link>
 
-                <Link
-                  href="/sign-up"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-5 py-3 font-semibold text-white hover:bg-white/10"
-                >
-                  Create account
-                </Link>
-              </>
-            )}
+              <UserButton />
+            </Show>
+
+            <Show when="signed-out">
+              <Link
+                href="/sign-in"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-slate-950"
+              >
+                Sign in <ArrowRight className="h-4 w-4" />
+              </Link>
+
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-5 py-3 font-semibold text-white"
+              >
+                Create account
+              </Link>
+            </Show>
           </div>
         </div>
 
