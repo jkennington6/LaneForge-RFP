@@ -1,176 +1,189 @@
 import Link from "next/link";
-import {
-  getCustomerOrgIdsForCurrentUser,
-  requireCustomerPortalUser,
-} from "@/lib/portal-access";
+import { requireCustomerPortalUser, getCustomerOrgIdsForCurrentUser } from "@/lib/portal-access";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-type AnyRow = Record<string, any>;
+type AnyRow = Record<string, unknown>;
 
-function getRfpName(rfp: AnyRow) {
-  return rfp.name || rfp.title || rfp.rfp_name || "Untitled RFP";
+function pick(row: AnyRow | null | undefined, keys: string[]) {
+  if (!row) return null;
+
+  for (const key of keys) {
+    const value = row[key];
+
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return value;
+    }
+  }
+
+  return null;
 }
 
-function getRfpDueDate(rfp: AnyRow) {
-  return rfp.due_date || rfp.response_due_date || rfp.deadline || "Not set";
+function text(row: AnyRow | null | undefined, keys: string[], fallback = "—") {
+  const value = pick(row, keys);
+  return value === null ? fallback : String(value);
 }
 
-function getRfpStatus(rfp: AnyRow) {
-  return rfp.status || "Active";
+function formatDate(value: unknown) {
+  if (!value) return "Not set";
+
+  const date = new Date(String(value));
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function rowBelongsToAnyOrg(row: AnyRow, orgIds: string[]) {
+  if (!orgIds.length) return false;
+
+  return Object.values(row).some((value) => orgIds.includes(String(value)));
+}
+
+function statusClass(status: string) {
+  const normalized = status.toLowerCase();
+
+  if (normalized.includes("active") || normalized.includes("open")) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (normalized.includes("draft")) {
+    return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+
+  if (normalized.includes("closed") || normalized.includes("complete")) {
+    return "border-blue-200 bg-blue-50 text-blue-700";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
 export default async function CustomerRfpsPage() {
   const user = await requireCustomerPortalUser();
-  const supabase = createServiceSupabaseClient();
-
   const customerOrgIds = (await getCustomerOrgIdsForCurrentUser(user)) ?? [];
 
   if (!customerOrgIds.length) {
     return (
       <main className="p-6">
         <h1 className="text-2xl font-bold text-slate-950">Customer RFPs</h1>
+
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-          Your account is active, but it has not been linked to a customer
-          organization yet. Contact the Super Admin to complete setup.
+          Your account is active, but it has not been linked to a customer organization yet.
+          Contact the Super Admin to complete setup.
         </div>
       </main>
     );
   }
 
-  const { data: orgs } = await supabase
-    .from("organizations")
-    .select("id,name,organization_type,logo_url,brand_color,status")
-    .in("id", customerOrgIds)
-    .eq("status", "active");
+  const supabase = createServiceSupabaseClient();
 
-  const organization = (orgs || [])[0] as AnyRow | undefined;
-
-  const { data: rfps, error } = await supabase
+  const { data: rfpRows, error: rfpError } = await supabase
     .from("rfps")
-    .select("*")
-    .in("customer_organization_id", customerOrgIds);
+    .select("*");
 
-  if (error) {
-    throw new Error(error.message);
+  if (rfpError) {
+    throw new Error(rfpError.message);
   }
 
-  const rfpRows = (rfps || []) as AnyRow[];
-  const rfpIds = rfpRows.map((rfp) => rfp.id).filter(Boolean);
+  const rfps = ((rfpRows ?? []) as AnyRow[])
+    .filter((rfp) => rowBelongsToAnyOrg(rfp, customerOrgIds))
+    .sort((a, b) => {
+      const aDate = new Date(String(pick(a, ["created_at", "updated_at"]) ?? 0)).getTime();
+      const bDate = new Date(String(pick(b, ["created_at", "updated_at"]) ?? 0)).getTime();
 
-  const { data: visibilityRows } = rfpIds.length
-    ? await supabase
-        .from("rfp_customer_visibility")
-        .select("*")
-        .in("rfp_id", rfpIds)
-        .eq("show_in_customer_portal", true)
-    : { data: [] };
+      return bDate - aDate;
+    });
 
-  const visibleIds = new Set(
-    (visibilityRows || []).map((row: AnyRow) => row.rfp_id)
-  );
+  const activeCount = rfps.filter((rfp) => {
+    const status = text(rfp, ["status", "rfp_status"], "").toLowerCase();
+    return status.includes("active") || status.includes("open");
+  }).length;
 
-  const visibleRfps = rfpRows.filter((rfp) => visibleIds.has(rfp.id));
+  const draftCount = rfps.filter((rfp) => {
+    const status = text(rfp, ["status", "rfp_status"], "").toLowerCase();
+    return status.includes("draft");
+  }).length;
 
   return (
     <main className="p-6">
-      {organization && (
-        <div
-          className="mb-6 rounded-2xl border bg-white p-5 shadow-sm"
-          style={{ borderColor: organization.brand_color || "#e2e8f0" }}
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border bg-slate-50"
-              style={{ borderColor: organization.brand_color || "#e2e8f0" }}
-            >
-              {organization.logo_url ? (
-                <img
-                  src={organization.logo_url}
-                  alt={organization.name}
-                  className="h-full w-full object-contain p-2"
-                />
-              ) : (
-                <span className="text-lg font-bold text-slate-400">
-                  {String(organization.name || "?").slice(0, 2).toUpperCase()}
-                </span>
-              )}
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Customer Portal
-              </p>
-              <h1 className="text-2xl font-bold text-slate-950">
-                {organization.name}
-              </h1>
-              <p className="mt-1 text-sm text-slate-600">
-                Powered by LaneForge RFP
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-950">Customer RFPs</h2>
+          <h1 className="text-2xl font-bold text-slate-950">Customer RFPs</h1>
           <p className="mt-1 text-sm text-slate-600">
-            View RFPs released to your customer portal. Bid details, savings,
-            comparisons, and awards are only shown when released by the managing
-            organization.
+            View RFPs released to your organization. Carrier bid amounts, savings,
+            comparisons, routing guides, and award recommendations remain hidden unless released.
           </p>
         </div>
       </div>
 
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Total RFPs</p>
+          <p className="mt-2 text-3xl font-bold text-slate-950">{rfps.length}</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Active RFPs</p>
+          <p className="mt-2 text-3xl font-bold text-slate-950">{activeCount}</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Draft / Setup</p>
+          <p className="mt-2 text-3xl font-bold text-slate-950">{draftCount}</p>
+        </div>
+      </div>
+
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">RFP</th>
-              <th className="px-4 py-3">Due Date</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Results</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
+        <div className="border-b border-slate-200 px-5 py-4">
+          <h2 className="font-semibold text-slate-950">Released RFPs</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            These are the RFPs currently connected to your organization.
+          </p>
+        </div>
 
-          <tbody className="divide-y divide-slate-200">
-            {visibleRfps.map((rfp) => (
-              <tr key={rfp.id}>
-                <td className="px-4 py-3 font-semibold text-slate-950">
-                  {getRfpName(rfp)}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {getRfpDueDate(rfp)}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {getRfpStatus(rfp)}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  Not released yet
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/customer/rfps/${rfp.id}`}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700"
-                  >
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
+        {rfps.length ? (
+          <div className="divide-y divide-slate-200">
+            {rfps.map((rfp) => {
+              const id = String(rfp.id);
+              const title = text(rfp, ["name", "title", "rfp_name"], "Untitled RFP");
+              const status = text(rfp, ["status", "rfp_status"], "Unknown");
+              const type = text(rfp, ["type", "rfp_type", "transportation_mode", "mode"], "RFP");
+              const dueDate = pick(rfp, ["due_date", "bid_due_date", "deadline", "bid_deadline"]);
 
-            {!visibleRfps.length && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                  No RFPs have been released to your customer portal yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              return (
+                <Link
+                  key={id}
+                  href={`/customer/rfps/${id}`}
+                  className="block px-5 py-4 transition hover:bg-slate-50"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-slate-950">{title}</h3>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {type} · Due date: {formatDate(dueDate)}
+                      </p>
+                    </div>
+
+                    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(status)}`}>
+                      {status}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-5 text-sm text-slate-600">
+            No RFPs have been released to your organization yet.
+          </div>
+        )}
       </div>
     </main>
   );
