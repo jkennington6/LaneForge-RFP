@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
-import { createServiceSupabaseClient } from "@/lib/supabase";
+import { requireRfpExportAccess } from "@/lib/rfp-access";
 
 function csvEscape(value: unknown) {
   const raw = String(value ?? "");
@@ -75,14 +74,15 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ rfpId: string }> }
 ) {
-  const { userId } = await auth();
+  const { rfpId } = await params;
 
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
+  const access = await requireRfpExportAccess(rfpId);
+
+  if (!access.allowed) {
+    return new Response(access.error, { status: access.status });
   }
 
-  const { rfpId } = await params;
-  const supabase = createServiceSupabaseClient();
+  const supabase = access.supabase;
 
   const [rfpResult, lanesResult, ratesResult] = await Promise.all([
     supabase
