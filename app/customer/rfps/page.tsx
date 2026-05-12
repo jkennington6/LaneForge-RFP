@@ -20,7 +20,7 @@ function pick(row: AnyRow | null | undefined, keys: string[]) {
   return null;
 }
 
-function text(row: AnyRow | null | undefined, keys: string[], fallback = "—") {
+function text(row: AnyRow | null | undefined, keys: string[], fallback = "â€”") {
   const value = pick(row, keys);
   return value === null ? fallback : String(value);
 }
@@ -167,7 +167,7 @@ export default async function CustomerRfpsPage() {
                     <div>
                       <h3 className="font-semibold text-slate-950">{title}</h3>
                       <p className="mt-1 text-sm text-slate-600">
-                        {type} · Due date: {formatDate(dueDate)}
+                        {type} Â· Due date: {formatDate(dueDate)}
                       </p>
                     </div>
 

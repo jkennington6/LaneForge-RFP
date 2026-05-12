@@ -21,7 +21,7 @@ function pick(row: AnyRow | null | undefined, keys: string[]) {
   return null;
 }
 
-function text(row: AnyRow | null | undefined, keys: string[], fallback = "—") {
+function text(row: AnyRow | null | undefined, keys: string[], fallback = "â€”") {
   const value = pick(row, keys);
   return value === null ? fallback : String(value);
 }
@@ -93,7 +93,7 @@ function laneName(lane: AnyRow) {
   const stateLane = originState && destState ? `${originState}-${destState}` : "Lane";
   const zipLane = originZip && destZip ? `${originZip}-${destZip}` : "";
 
-  return zipLane ? `${stateLane} · ${zipLane}` : stateLane;
+  return zipLane ? `${stateLane} Â· ${zipLane}` : stateLane;
 }
 
 export default async function CustomerRfpDetailPage({
@@ -206,7 +206,7 @@ export default async function CustomerRfpDetailPage({
           </div>
 
           <p className="mt-1 text-sm text-slate-600">
-            {type} · Due date: {formatDate(dueDate)}
+            {type} Â· Due date: {formatDate(dueDate)}
           </p>
         </div>
       </div>
@@ -332,13 +332,13 @@ export default async function CustomerRfpDetailPage({
                   return (
                     <tr key={String(lane.id ?? index)}>
                       <td className="px-4 py-3 font-semibold text-slate-950">{laneName(lane)}</td>
-                      <td className="px-4 py-3 text-slate-600">{origin || "—"}</td>
-                      <td className="px-4 py-3 text-slate-600">{destination || "—"}</td>
+                      <td className="px-4 py-3 text-slate-600">{origin || "â€”"}</td>
+                      <td className="px-4 py-3 text-slate-600">{destination || "â€”"}</td>
                       <td className="px-4 py-3 text-slate-600">
-                        {text(lane, ["weight", "shipment_weight", "avg_weight"], "—")}
+                        {text(lane, ["weight", "shipment_weight", "avg_weight"], "â€”")}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {text(lane, ["class", "freight_class", "actual_class", "rated_class"], "—")}
+                        {text(lane, ["class", "freight_class", "actual_class", "rated_class"], "â€”")}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {text(lane, ["shipment_count", "shipments", "historical_shipments", "count"], "1")}

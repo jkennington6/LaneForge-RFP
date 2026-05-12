@@ -1,4 +1,4 @@
-﻿type BrandLogoProps = {
+type BrandLogoProps = {
   variant?: "full" | "icon";
   className?: string;
 };

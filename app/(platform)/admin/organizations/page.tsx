@@ -260,7 +260,7 @@ export default async function OrganizationsPage() {
                   <div>
                     <h2 className="font-semibold text-slate-950">{org.name}</h2>
                     <p className="text-xs text-slate-500">
-                      {getTypeLabel(orgType)} Â· {orgStatus}
+                      {getTypeLabel(orgType)} Ã‚Â· {orgStatus}
                     </p>
                     <p className="mt-1 text-xs text-slate-400">ID: {org.id}</p>
                   </div>

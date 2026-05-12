@@ -10,7 +10,7 @@ export default function CarrierPortalPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="font-semibold text-slate-950">Better Earth Packaging 2026 LTL RFP</h2>
-              <p className="mt-1 text-sm text-slate-500">Due June 12, 2026 · LTL · FAK 92.5 assumption</p>
+              <p className="mt-1 text-sm text-slate-500">Due June 12, 2026 Â· LTL Â· FAK 92.5 assumption</p>
             </div>
             <StatusBadge variant="active">Open</StatusBadge>
           </div>

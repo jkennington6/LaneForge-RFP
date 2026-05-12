@@ -32,7 +32,7 @@ const organizationRoleOptions = ["member", "admin", "viewer"];
 
 function cleanOrgType(type: string | null | undefined) {
   if (!type) return "customer";
-  if (type === "shipper") return "customer";
+  if (type === "customer") return "customer";
   return type;
 }
 

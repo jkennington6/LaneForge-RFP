@@ -53,8 +53,8 @@ function getLaneLabel(lane: AnyRow) {
   const freightClass = lane.class || lane.freight_class || lane.actual_class || "";
 
   return `${origin || "Origin"} to ${destination || "Destination"}${
-    weight ? ` • ${weight} lbs` : ""
-  }${freightClass ? ` • Class ${freightClass}` : ""}`;
+    weight ? ` â€¢ ${weight} lbs` : ""
+  }${freightClass ? ` â€¢ Class ${freightClass}` : ""}`;
 }
 
 async function getCarrierContext() {
@@ -360,7 +360,7 @@ export default async function CarrierRfpDetailPage({ params }: PageProps) {
                     <p className="mt-1 text-sm text-slate-600">
                       Shipments: {lane.shipment_count || lane.shipments || 1}
                       {lane.historical_spend
-                        ? ` • Historical spend: ${money(lane.historical_spend)}`
+                        ? ` â€¢ Historical spend: ${money(lane.historical_spend)}`
                         : ""}
                     </p>
                   </div>

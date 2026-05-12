@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { SectionHeader } from "@/components/section-header";

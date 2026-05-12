@@ -147,7 +147,7 @@ export default async function CarrierRfpsPage() {
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
                       Status: {rfp.status || "active"}
-                      {dueDate ? ` • Due: ${dueDate}` : ""}
+                      {dueDate ? ` â€¢ Due: ${dueDate}` : ""}
                     </p>
                   </div>
 

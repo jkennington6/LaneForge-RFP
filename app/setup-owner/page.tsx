@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { SectionHeader } from "@/components/section-header";
 import { createServiceSupabaseClient } from "@/lib/supabase";

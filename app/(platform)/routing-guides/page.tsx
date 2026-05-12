@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { CsvDownloadButton } from "@/components/csv-download-button";
 import { SectionHeader } from "@/components/section-header";
 import { createServiceSupabaseClient } from "@/lib/supabase";

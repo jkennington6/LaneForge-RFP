@@ -46,8 +46,8 @@ export default function DashboardPage() {
             {comparisonRows.slice(0, 5).map((row) => (
               <div key={`${row.lane}-${row.zip3Lane}`} className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
                 <div>
-                  <div className="font-semibold text-slate-950">{row.lane} · {row.zip3Lane}</div>
-                  <div className="text-sm text-slate-500">Primary: {row.primaryCarrier} · Backup: {row.secondCarrier}</div>
+                  <div className="font-semibold text-slate-950">{row.lane} Â· {row.zip3Lane}</div>
+                  <div className="text-sm text-slate-500">Primary: {row.primaryCarrier} Â· Backup: {row.secondCarrier}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-semibold text-emerald-700">{formatCurrency(row.annualSavings)}</div>

@@ -1,1 +1,1 @@
-﻿export * from "./portal-access";
+export * from "./portal-access";

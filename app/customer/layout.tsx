@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { requireCustomerPortalUser } from "@/lib/portal-access";
 
 export default async function CustomerLayout({

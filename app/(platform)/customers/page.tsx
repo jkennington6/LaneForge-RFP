@@ -1,4 +1,4 @@
-﻿import { revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { SectionHeader } from "@/components/section-header";
 import { createServiceSupabaseClient } from "@/lib/supabase";

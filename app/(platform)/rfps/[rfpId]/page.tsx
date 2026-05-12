@@ -68,12 +68,12 @@ function getWeightBreak(weight: number | null) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "Ã¢â‚¬â€";
+  if (!value) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
   return new Date(value).toLocaleDateString();
 }
 
 function money(value: number | null) {
-  if (value === null || value === undefined) return "Ã¢â‚¬â€";
+  if (value === null || value === undefined) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
 
   return value.toLocaleString("en-US", {
     style: "currency",
@@ -197,7 +197,7 @@ export default async function RfpDetailPage({
     <div>
       <SectionHeader
         title={rfp.name}
-        description={`${rfp.mode} RFP Ã¢â‚¬Â¢ ${rfp.status} Ã¢â‚¬Â¢ Bid due ${formatDate(rfp.bid_due_date)}`}
+        description={`${rfp.mode} RFP ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${rfp.status} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Bid due ${formatDate(rfp.bid_due_date)}`}
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -250,13 +250,13 @@ export default async function RfpDetailPage({
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-slate-950">Pricing Assumptions</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Format: {rfp.required_pricing_format ?? "Ã¢â‚¬â€"}
+            Format: {rfp.required_pricing_format ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Fuel: {rfp.fuel_assumptions ?? "Ã¢â‚¬â€"}
+            Fuel: {rfp.fuel_assumptions ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Accessorials: {rfp.accessorial_assumptions ?? "Ã¢â‚¬â€"}
+            Accessorials: {rfp.accessorial_assumptions ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
           </p>
         </div>
       </div>
@@ -359,20 +359,20 @@ export default async function RfpDetailPage({
             {lanes.map((lane) => (
               <tr key={lane.id}>
                 <td className="px-4 py-3 font-semibold text-slate-950">
-                  {lane.lane_state_pair ?? "Ã¢â‚¬â€"}
+                  {lane.lane_state_pair ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {lane.origin_city ?? "Ã¢â‚¬â€"}, {lane.origin_state ?? "Ã¢â‚¬â€"} {lane.origin_zip ?? ""}
+                  {lane.origin_city ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}, {lane.origin_state ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} {lane.origin_zip ?? ""}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {lane.destination_city ?? "Ã¢â‚¬â€"}, {lane.destination_state ?? "Ã¢â‚¬â€"} {lane.destination_zip ?? ""}
+                  {lane.destination_city ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}, {lane.destination_state ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} {lane.destination_zip ?? ""}
                 </td>
-                <td className="px-4 py-3 text-slate-600">{lane.weight ?? "Ã¢â‚¬â€"}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.weight_break ?? "Ã¢â‚¬â€"}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.freight_class ?? "Ã¢â‚¬â€"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.weight ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.weight_break ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.freight_class ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
                 <td className="px-4 py-3 text-slate-600">{lane.shipment_count}</td>
                 <td className="px-4 py-3 text-slate-600">{money(lane.historical_spend)}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.current_carrier ?? "Ã¢â‚¬â€"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.current_carrier ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
               </tr>
             ))}
 

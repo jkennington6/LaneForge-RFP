@@ -1,4 +1,4 @@
-﻿import { revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import Link from "next/link";
 import { CsvDownloadButton } from "@/components/csv-download-button";

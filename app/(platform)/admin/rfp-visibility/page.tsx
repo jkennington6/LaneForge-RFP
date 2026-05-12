@@ -140,7 +140,7 @@ export default async function RfpVisibilityPage() {
   );
 
   const customerOrgs = (organizations || []).filter((org: AnyRow) =>
-    ["customer", "customer"].includes(org.organization_type)
+    ["customer"].includes(org.organization_type)
   );
 
   const managerOrgs = (organizations || []).filter((org: AnyRow) =>

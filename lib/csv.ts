@@ -1,4 +1,4 @@
-﻿export type CsvRow = Record<string, string>;
+export type CsvRow = Record<string, string>;
 
 export function normalizeHeader(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "_");

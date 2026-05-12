@@ -1,4 +1,4 @@
-﻿import { revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 import { escapeHtml, getAppUrl, sendLaneForgeEmail } from "@/lib/email";
