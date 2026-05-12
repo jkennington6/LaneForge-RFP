@@ -34,10 +34,16 @@ type RateRow = {
   accessorial_charge: number | null;
   transit_days: number | null;
   notes: string | null;
-  carrier_bid_submissions?: {
-    carrier_name: string;
-    original_filename: string | null;
-  } | null;
+  carrier_bid_submissions?:
+    | {
+        carrier_name: string;
+        original_filename: string | null;
+      }
+    | {
+        carrier_name: string;
+        original_filename: string | null;
+      }[]
+    | null;
 };
 
 function formatDate(value: string | null) {
@@ -126,7 +132,7 @@ export default async function RfpBidsPage({
 
   const rfp = rfpResult.data;
   const submissions = (submissionsResult.data ?? []) as SubmissionRow[];
-  const rates = (ratesResult.data ?? []) as RateRow[];
+  const rates = (ratesResult.data ?? []) as unknown as RateRow[];
 
   const uniqueCarriers = new Set(submissions.map((submission) => submission.carrier_name));
   const pricedRows = rates.filter(
@@ -273,7 +279,9 @@ export default async function RfpBidsPage({
             {rates.map((rate) => (
               <tr key={rate.id}>
                 <td className="px-4 py-3 font-semibold text-slate-950">
-                  {rate.carrier_bid_submissions?.carrier_name ?? "-"}
+                  {Array.isArray(rate.carrier_bid_submissions)
+                    ? rate.carrier_bid_submissions[0]?.carrier_name ?? "-"
+                    : rate.carrier_bid_submissions?.carrier_name ?? "-"}
                 </td>
 
                 <td className="px-4 py-3 text-slate-600">
