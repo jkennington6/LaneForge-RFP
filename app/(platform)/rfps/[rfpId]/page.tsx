@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 import { RfpInvitesAndMessages } from "@/components/rfp-invites-and-messages";
 type RfpRow = {
@@ -68,12 +69,12 @@ function getWeightBreak(weight: number | null) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
+  if (!value) return "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â";
   return new Date(value).toLocaleDateString();
 }
 
 function money(value: number | null) {
-  if (value === null || value === undefined) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
+  if (value === null || value === undefined) return "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â";
 
   return value.toLocaleString("en-US", {
     style: "currency",
@@ -145,6 +146,71 @@ async function createLane(formData: FormData) {
   revalidatePath("/routing-guides");
 }
 
+
+async function deleteRfp(formData: FormData) {
+  "use server";
+
+  const supabase = createServiceSupabaseClient();
+  const rfpId = String(formData.get("rfp_id") ?? "").trim();
+
+  if (!rfpId) {
+    throw new Error("RFP ID is required.");
+  }
+
+  const { data: responses, error: responsesError } = await supabase
+    .from("bid_responses")
+    .select("id")
+    .eq("rfp_id", rfpId);
+
+  if (responsesError && !responsesError.message.toLowerCase().includes("does not exist")) {
+    throw new Error(responsesError.message);
+  }
+
+  const responseIds = ((responses ?? []) as { id: string }[]).map((row) => row.id);
+
+  if (responseIds.length) {
+    const { error: responseLinesError } = await supabase
+      .from("bid_response_lines")
+      .delete()
+      .in("bid_response_id", responseIds);
+
+    if (responseLinesError && !responseLinesError.message.toLowerCase().includes("does not exist")) {
+      throw new Error(responseLinesError.message);
+    }
+  }
+
+  const relatedDeletes = [
+    { table: "bid_messages", column: "rfp_id" },
+    { table: "rfp_carrier_invites", column: "rfp_id" },
+    { table: "bid_responses", column: "rfp_id" },
+    { table: "shipment_lanes", column: "rfp_id" },
+    { table: "rfp_customer_visibility", column: "rfp_id" },
+  ];
+
+  for (const relatedDelete of relatedDeletes) {
+    const { error } = await supabase
+      .from(relatedDelete.table)
+      .delete()
+      .eq(relatedDelete.column, rfpId);
+
+    if (error && !error.message.toLowerCase().includes("does not exist")) {
+      throw new Error(error.message);
+    }
+  }
+
+  const { error } = await supabase.from("rfps").delete().eq("id", rfpId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/rfps");
+  revalidatePath("/dashboard");
+  revalidatePath("/comparisons");
+  revalidatePath("/routing-guides");
+
+  redirect("/rfps");
+}
 export default async function RfpDetailPage({
   params,
 }: {
@@ -197,7 +263,7 @@ export default async function RfpDetailPage({
     <div>
       <SectionHeader
         title={rfp.name}
-        description={`${rfp.mode} RFP ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${rfp.status} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Bid due ${formatDate(rfp.bid_due_date)}`}
+        description={`${rfp.mode} RFP ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ ${rfp.status} ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ Bid due ${formatDate(rfp.bid_due_date)}`}
         action={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -212,8 +278,16 @@ export default async function RfpDetailPage({
 >
   Invite carriers
 </Link>
-
-          </div>
+<form action={deleteRfp}>
+  <input type="hidden" name="rfp_id" value={rfp.id} />
+  <ConfirmSubmitButton
+    confirmMessage={`Delete ${rfp.name}? This will permanently remove this RFP and related lanes, invites, messages, and bids.`}
+    className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+  >
+    Delete RFP
+  </ConfirmSubmitButton>
+</form>
+</div>
         }
       />
 
@@ -250,13 +324,13 @@ export default async function RfpDetailPage({
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold text-slate-950">Pricing Assumptions</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Format: {rfp.required_pricing_format ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
+            Format: {rfp.required_pricing_format ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Fuel: {rfp.fuel_assumptions ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
+            Fuel: {rfp.fuel_assumptions ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Accessorials: {rfp.accessorial_assumptions ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
+            Accessorials: {rfp.accessorial_assumptions ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}
           </p>
         </div>
       </div>
@@ -359,20 +433,20 @@ export default async function RfpDetailPage({
             {lanes.map((lane) => (
               <tr key={lane.id}>
                 <td className="px-4 py-3 font-semibold text-slate-950">
-                  {lane.lane_state_pair ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}
+                  {lane.lane_state_pair ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {lane.origin_city ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}, {lane.origin_state ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} {lane.origin_zip ?? ""}
+                  {lane.origin_city ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}, {lane.origin_state ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} {lane.origin_zip ?? ""}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
-                  {lane.destination_city ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}, {lane.destination_state ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"} {lane.destination_zip ?? ""}
+                  {lane.destination_city ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}, {lane.destination_state ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"} {lane.destination_zip ?? ""}
                 </td>
-                <td className="px-4 py-3 text-slate-600">{lane.weight ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.weight_break ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.freight_class ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.weight ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.weight_break ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.freight_class ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}</td>
                 <td className="px-4 py-3 text-slate-600">{lane.shipment_count}</td>
                 <td className="px-4 py-3 text-slate-600">{money(lane.historical_spend)}</td>
-                <td className="px-4 py-3 text-slate-600">{lane.current_carrier ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</td>
+                <td className="px-4 py-3 text-slate-600">{lane.current_carrier ?? "ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"}</td>
               </tr>
             ))}
 
