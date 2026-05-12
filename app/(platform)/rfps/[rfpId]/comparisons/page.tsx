@@ -273,6 +273,13 @@ export default async function RfpComparisonsPage({
             </Link>
 
             <Link
+              href={`/rfps/${rfp.id}/comparisons/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Download CSV
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}/bids`}
               className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
             >

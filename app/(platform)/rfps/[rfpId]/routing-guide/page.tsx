@@ -289,6 +289,13 @@ export default async function RfpRoutingGuidePage({
             </Link>
 
             <Link
+              href={`/rfps/${rfp.id}/routing-guide/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Download CSV
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}/comparisons`}
               className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
             >
