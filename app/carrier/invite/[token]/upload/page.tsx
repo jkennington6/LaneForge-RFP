@@ -1,7 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { notFound } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { createServiceSupabaseClient } from "@/lib/supabase";
+
+type ParsedCsvRow = {
+  row_number: number;
+  data: Record<string, string>;
+};
 
 function parseCsvLine(line: string) {
   const values: string[] = [];
@@ -36,7 +40,7 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-function parseCsv(text: string) {
+function parseCsv(text: string): ParsedCsvRow[] {
   const cleaned = text.replace(/^\uFEFF/, "");
   const lines = cleaned
     .split(/\r?\n/)
@@ -51,15 +55,18 @@ function parseCsv(text: string) {
     header.trim().toLowerCase()
   );
 
-  return lines.slice(1).map((line) => {
+  return lines.slice(1).map((line, index) => {
     const values = parseCsvLine(line);
     const row: Record<string, string> = {};
 
-    headers.forEach((header, index) => {
-      row[header] = values[index] ?? "";
+    headers.forEach((header, valueIndex) => {
+      row[header] = values[valueIndex] ?? "";
     });
 
-    return row;
+    return {
+      row_number: index + 2,
+      data: row,
+    };
   });
 }
 
@@ -84,12 +91,24 @@ function toNullableInteger(value: string | null | undefined) {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
-function requireHeader(rows: Record<string, string>[], header: string) {
-  if (!rows.length) return;
+function hasRequiredHeader(rows: ParsedCsvRow[], header: string) {
+  if (!rows.length) return false;
+  return header in rows[0].data;
+}
 
-  if (!(header in rows[0])) {
+function requireHeader(rows: ParsedCsvRow[], header: string) {
+  if (!hasRequiredHeader(rows, header)) {
     throw new Error(`Missing required CSV column: ${header}`);
   }
+}
+
+function isProvided(value: string | null | undefined) {
+  return String(value ?? "").trim() !== "";
+}
+
+function isInvalidNumber(value: string | null | undefined) {
+  if (!isProvided(value)) return false;
+  return toNullableNumber(value) === null;
 }
 
 async function uploadBid(formData: FormData) {
@@ -117,31 +136,14 @@ async function uploadBid(formData: FormData) {
   }
 
   const csvText = await file.text();
-  const rows = parseCsv(csvText);
+  const parsedRows = parseCsv(csvText);
 
-  requireHeader(rows, "lane_id");
-  requireHeader(rows, "origin_zip");
-  requireHeader(rows, "destination_zip");
-  requireHeader(rows, "discount");
-  requireHeader(rows, "minimum_charge");
-  requireHeader(rows, "rate_per_lb");
-
-  const validRows = rows.filter((row) => {
-    const laneId = String(row.lane_id ?? "").trim();
-    const discount = toNullableNumber(row.discount);
-    const minimumCharge = toNullableNumber(row.minimum_charge);
-    const ratePerLb = toNullableNumber(row.rate_per_lb);
-
-    return Boolean(laneId) && (
-      discount !== null ||
-      minimumCharge !== null ||
-      ratePerLb !== null
-    );
-  });
-
-  if (!validRows.length) {
-    throw new Error("No valid bid rows found. Each row needs a lane_id and at least one pricing field.");
-  }
+  requireHeader(parsedRows, "lane_id");
+  requireHeader(parsedRows, "origin_zip");
+  requireHeader(parsedRows, "destination_zip");
+  requireHeader(parsedRows, "discount");
+  requireHeader(parsedRows, "minimum_charge");
+  requireHeader(parsedRows, "rate_per_lb");
 
   const { data: submission, error: submissionError } = await supabase
     .from("carrier_bid_submissions")
@@ -151,9 +153,8 @@ async function uploadBid(formData: FormData) {
       carrier_name: carrierName,
       submitted_by_email: contactEmail || null,
       original_filename: file.name,
-      status: "processed",
+      status: "processing",
       uploaded_at: new Date().toISOString(),
-      processed_at: new Date().toISOString(),
     })
     .select("id")
     .single();
@@ -162,55 +163,188 @@ async function uploadBid(formData: FormData) {
     throw new Error(submissionError?.message ?? "Unable to create bid submission.");
   }
 
-  const laneRateRows = validRows.map((row) => {
-    const originState = String(row.origin_state ?? "").trim().toUpperCase() || null;
-    const destinationState = String(row.destination_state ?? "").trim().toUpperCase() || null;
+  const { data: lanes, error: lanesError } = await supabase
+    .from("shipment_lanes")
+    .select("id")
+    .eq("rfp_id", rfpId);
 
-    return {
-      submission_id: submission.id,
-      rfp_id: rfpId,
-      lane_id: String(row.lane_id ?? "").trim() || null,
+  if (lanesError) {
+    throw new Error(lanesError.message);
+  }
 
-      origin_zip: String(row.origin_zip ?? "").trim() || null,
-      destination_zip: String(row.destination_zip ?? "").trim() || null,
+  const validLaneIds = new Set((lanes ?? []).map((lane) => String(lane.id)));
 
-      origin_state: originState,
-      destination_state: destinationState,
-      lane_state_pair:
-        String(row.lane_state_pair ?? "").trim() ||
-        (originState && destinationState ? `${originState}-${destinationState}` : null),
+  const validRows: ParsedCsvRow[] = [];
+  const validationErrors: {
+    submission_id: string;
+    rfp_id: string;
+    invite_id: string;
+    row_number: number;
+    error_type: string;
+    error_message: string;
+    raw_row: Record<string, string>;
+  }[] = [];
 
-      weight_break: String(row.weight_break ?? "").trim() || null,
-      freight_class: String(row.freight_class ?? "").trim() || null,
+  parsedRows.forEach((parsedRow) => {
+    const row = parsedRow.data;
+    const laneId = String(row.lane_id ?? "").trim();
 
-      discount: toNullableNumber(row.discount),
-      minimum_charge: toNullableNumber(row.minimum_charge),
-      rate_per_lb: toNullableNumber(row.rate_per_lb),
+    const discount = toNullableNumber(row.discount);
+    const minimumCharge = toNullableNumber(row.minimum_charge);
+    const ratePerLb = toNullableNumber(row.rate_per_lb);
 
-      fuel_program: String(row.fuel_program ?? "").trim() || null,
-      accessorial_charge: toNullableNumber(row.accessorial_charge),
-      transit_days: toNullableInteger(row.transit_days),
-      notes: String(row.carrier_notes ?? row.notes ?? "").trim() || null,
-    };
+    const hasPricing =
+      discount !== null ||
+      minimumCharge !== null ||
+      ratePerLb !== null;
+
+    if (!laneId) {
+      validationErrors.push({
+        submission_id: submission.id,
+        rfp_id: rfpId,
+        invite_id: inviteId,
+        row_number: parsedRow.row_number,
+        error_type: "missing_lane_id",
+        error_message: "Missing lane_id.",
+        raw_row: row,
+      });
+      return;
+    }
+
+    if (!validLaneIds.has(laneId)) {
+      validationErrors.push({
+        submission_id: submission.id,
+        rfp_id: rfpId,
+        invite_id: inviteId,
+        row_number: parsedRow.row_number,
+        error_type: "invalid_lane_id",
+        error_message: "lane_id does not belong to this RFP.",
+        raw_row: row,
+      });
+      return;
+    }
+
+    if (!hasPricing) {
+      validationErrors.push({
+        submission_id: submission.id,
+        rfp_id: rfpId,
+        invite_id: inviteId,
+        row_number: parsedRow.row_number,
+        error_type: "missing_pricing",
+        error_message: "At least one pricing field is required: discount, minimum_charge, or rate_per_lb.",
+        raw_row: row,
+      });
+      return;
+    }
+
+    if (
+      isInvalidNumber(row.discount) ||
+      isInvalidNumber(row.minimum_charge) ||
+      isInvalidNumber(row.rate_per_lb) ||
+      isInvalidNumber(row.accessorial_charge)
+    ) {
+      validationErrors.push({
+        submission_id: submission.id,
+        rfp_id: rfpId,
+        invite_id: inviteId,
+        row_number: parsedRow.row_number,
+        error_type: "invalid_number",
+        error_message: "One or more numeric fields contain invalid values.",
+        raw_row: row,
+      });
+      return;
+    }
+
+    validRows.push(parsedRow);
   });
 
-  const { error: laneRateError } = await supabase
-    .from("carrier_bid_lane_rates")
-    .insert(laneRateRows);
+  if (validationErrors.length > 0) {
+    const { error: validationInsertError } = await supabase
+      .from("carrier_bid_validation_errors")
+      .insert(validationErrors);
 
-  if (laneRateError) {
-    throw new Error(laneRateError.message);
+    if (validationInsertError) {
+      throw new Error(validationInsertError.message);
+    }
   }
+
+  if (validRows.length > 0) {
+    const laneRateRows = validRows.map((parsedRow) => {
+      const row = parsedRow.data;
+
+      const originState = String(row.origin_state ?? "").trim().toUpperCase() || null;
+      const destinationState = String(row.destination_state ?? "").trim().toUpperCase() || null;
+
+      return {
+        submission_id: submission.id,
+        rfp_id: rfpId,
+        lane_id: String(row.lane_id ?? "").trim() || null,
+
+        origin_zip: String(row.origin_zip ?? "").trim() || null,
+        destination_zip: String(row.destination_zip ?? "").trim() || null,
+
+        origin_state: originState,
+        destination_state: destinationState,
+        lane_state_pair:
+          String(row.lane_state_pair ?? "").trim() ||
+          (originState && destinationState ? `${originState}-${destinationState}` : null),
+
+        weight_break: String(row.weight_break ?? "").trim() || null,
+        freight_class: String(row.freight_class ?? "").trim() || null,
+
+        discount: toNullableNumber(row.discount),
+        minimum_charge: toNullableNumber(row.minimum_charge),
+        rate_per_lb: toNullableNumber(row.rate_per_lb),
+
+        fuel_program: String(row.fuel_program ?? "").trim() || null,
+        accessorial_charge: toNullableNumber(row.accessorial_charge),
+        transit_days: toNullableInteger(row.transit_days),
+        notes: String(row.carrier_notes ?? row.notes ?? "").trim() || null,
+      };
+    });
+
+    const { error: laneRateError } = await supabase
+      .from("carrier_bid_lane_rates")
+      .insert(laneRateRows);
+
+    if (laneRateError) {
+      throw new Error(laneRateError.message);
+    }
+  }
+
+  const finalSubmissionStatus =
+    validRows.length > 0 && validationErrors.length > 0
+      ? "processed_with_errors"
+      : validRows.length > 0
+        ? "processed"
+        : "validation_failed";
+
+  const finalInviteStatus =
+    validRows.length > 0 && validationErrors.length > 0
+      ? "submitted_with_errors"
+      : validRows.length > 0
+        ? "submitted"
+        : "validation_failed";
+
+  await supabase
+    .from("carrier_bid_submissions")
+    .update({
+      status: finalSubmissionStatus,
+      processed_at: new Date().toISOString(),
+    })
+    .eq("id", submission.id);
 
   await supabase
     .from("rfp_carrier_invites")
     .update({
-      status: "submitted",
+      status: finalInviteStatus,
       updated_at: new Date().toISOString(),
     })
     .eq("id", inviteId);
 
-  redirect(`/carrier/invite/${token}/upload?submitted=1&rows=${laneRateRows.length}`);
+  redirect(
+    `/carrier/invite/${token}/upload?submitted=1&rows=${validRows.length}&errors=${validationErrors.length}`
+  );
 }
 
 export default async function CarrierBidUploadPage({
@@ -218,10 +352,10 @@ export default async function CarrierBidUploadPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ submitted?: string; rows?: string }>;
+  searchParams: Promise<{ submitted?: string; rows?: string; errors?: string }>;
 }) {
   const { token } = await params;
-  const { submitted, rows } = await searchParams;
+  const { submitted, rows, errors } = await searchParams;
 
   const supabase = createServiceSupabaseClient();
 
@@ -254,6 +388,9 @@ export default async function CarrierBidUploadPage({
     notFound();
   }
 
+  const importedRows = Number(rows ?? 0);
+  const errorRows = Number(errors ?? 0);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6">
@@ -273,14 +410,28 @@ export default async function CarrierBidUploadPage({
         </p>
       </div>
 
-      {submitted === "1" && (
+      {submitted === "1" && importedRows > 0 && errorRows === 0 && (
         <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Bid uploaded successfully. Imported {rows ?? "0"} lane pricing row(s).
+          Bid uploaded successfully. Imported {importedRows} lane pricing row(s).
+        </div>
+      )}
+
+      {submitted === "1" && importedRows > 0 && errorRows > 0 && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Bid uploaded with warnings. Imported {importedRows} valid lane pricing row(s). 
+          {errorRows} row(s) had validation issues and were not imported.
+        </div>
+      )}
+
+      {submitted === "1" && importedRows === 0 && errorRows > 0 && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          Bid upload failed validation. No rows were imported. 
+          {errorRows} row(s) had validation issues.
         </div>
       )}
 
       <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-        Upload the completed CSV bid template. Lane rows must include a lane_id
+        Upload the completed CSV bid template. Lane rows must include a valid lane_id from this RFP
         and at least one pricing field: discount, minimum_charge, or rate_per_lb.
       </div>
 
@@ -323,7 +474,8 @@ export default async function CarrierBidUploadPage({
       </form>
 
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        XLSX upload support will be added after the CSV parser is stable.
+        Validation now checks that lane IDs belong to this RFP, pricing fields are usable,
+        and invalid rows are isolated from the comparison engine.
       </div>
     </div>
   );
