@@ -162,6 +162,13 @@ export default async function RfpBidsPage({
             >
               Carrier Invites
             </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/validation-errors`}
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Validation Errors
+            </Link>
           </div>
         }
       />
