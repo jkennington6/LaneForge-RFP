@@ -442,6 +442,13 @@ export default async function CarrierBidUploadPage({
         >
           Download Bid Template
         </Link>
+
+        <Link
+          href={`/carrier/invite/${token}/submissions`}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Upload History
+        </Link>
       </div>
 
       <form
