@@ -171,6 +171,13 @@ export default async function RfpBidsPage({
             >
               Validation Errors
             </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/bids/manage`}
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              Manage Versions
+            </Link>
           </div>
         }
       />
