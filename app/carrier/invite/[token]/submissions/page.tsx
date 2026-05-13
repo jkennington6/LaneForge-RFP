@@ -194,6 +194,13 @@ export default async function CarrierSubmissionHistoryPage({
         >
           Upload Revised Bid
         </Link>
+
+        <Link
+          href={`/carrier/invite/${token}/submissions/errors/export`}
+          className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+        >
+          Download Error CSV
+        </Link>
       </div>
 
       <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
