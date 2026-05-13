@@ -172,6 +172,7 @@ export default async function RfpRoutingGuidePage({
         notes,
         carrier_bid_submissions (
           carrier_name,
+          is_active,
           original_filename
         )
       `)

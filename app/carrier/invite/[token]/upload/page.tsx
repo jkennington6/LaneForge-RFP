@@ -145,6 +145,23 @@ async function uploadBid(formData: FormData) {
   requireHeader(parsedRows, "minimum_charge");
   requireHeader(parsedRows, "rate_per_lb");
 
+  const { data: previousSubmissions, error: previousSubmissionsError } = await supabase
+    .from("carrier_bid_submissions")
+    .select("id, submission_version")
+    .eq("invite_id", inviteId);
+
+  if (previousSubmissionsError) {
+    throw new Error(previousSubmissionsError.message);
+  }
+
+  const nextSubmissionVersion =
+    Math.max(
+      0,
+      ...((previousSubmissions ?? []).map((submission) =>
+        Number(submission.submission_version ?? 0)
+      ))
+    ) + 1;
+
   const { data: submission, error: submissionError } = await supabase
     .from("carrier_bid_submissions")
     .insert({
@@ -154,6 +171,8 @@ async function uploadBid(formData: FormData) {
       submitted_by_email: contactEmail || null,
       original_filename: file.name,
       status: "processing",
+      submission_version: nextSubmissionVersion,
+      is_active: false,
       uploaded_at: new Date().toISOString(),
     })
     .select("id")
@@ -326,10 +345,28 @@ async function uploadBid(formData: FormData) {
         ? "submitted"
         : "validation_failed";
 
+  if (validRows.length > 0) {
+    const { error: supersedeError } = await supabase
+      .from("carrier_bid_submissions")
+      .update({
+        is_active: false,
+        superseded_at: new Date().toISOString(),
+        superseded_by_submission_id: submission.id,
+      })
+      .eq("invite_id", inviteId)
+      .neq("id", submission.id)
+      .eq("is_active", true);
+
+    if (supersedeError) {
+      throw new Error(supersedeError.message);
+    }
+  }
+
   await supabase
     .from("carrier_bid_submissions")
     .update({
       status: finalSubmissionStatus,
+      is_active: validRows.length > 0,
       processed_at: new Date().toISOString(),
     })
     .eq("id", submission.id);

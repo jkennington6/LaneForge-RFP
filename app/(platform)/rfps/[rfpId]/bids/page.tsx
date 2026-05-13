@@ -11,6 +11,8 @@ type SubmissionRow = {
   submitted_by_email: string | null;
   original_filename: string | null;
   status: string;
+  submission_version: number;
+  is_active: boolean;
   uploaded_at: string;
   processed_at: string | null;
   notes: string | null;
@@ -84,7 +86,7 @@ export default async function RfpBidsPage({
     supabase
       .from("carrier_bid_submissions")
       .select(
-        "id, rfp_id, invite_id, carrier_name, submitted_by_email, original_filename, status, uploaded_at, processed_at, notes"
+        "id, rfp_id, invite_id, carrier_name, submitted_by_email, original_filename, status, submission_version, is_active, uploaded_at, processed_at, notes"
       )
       .eq("rfp_id", rfpId)
       .order("uploaded_at", { ascending: false }),
@@ -210,6 +212,8 @@ export default async function RfpBidsPage({
               <th className="px-4 py-3">Submitted By</th>
               <th className="px-4 py-3">File</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Version</th>
+              <th className="px-4 py-3">Active</th>
               <th className="px-4 py-3">Uploaded</th>
               <th className="px-4 py-3">Processed</th>
             </tr>
@@ -237,6 +241,20 @@ export default async function RfpBidsPage({
                 </td>
 
                 <td className="px-4 py-3 text-slate-600">
+                  v{submission.submission_version ?? 1}
+                </td>
+
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                    submission.is_active
+                      ? "bg-green-50 text-green-700"
+                      : "bg-slate-100 text-slate-500"
+                  }`}>
+                    {submission.is_active ? "Active" : "Superseded"}
+                  </span>
+                </td>
+
+                <td className="px-4 py-3 text-slate-600">
                   {formatDate(submission.uploaded_at)}
                 </td>
 
@@ -248,7 +266,7 @@ export default async function RfpBidsPage({
 
             {!submissions.length && (
               <tr>
-                <td className="px-4 py-6 text-slate-500" colSpan={6}>
+                <td className="px-4 py-6 text-slate-500" colSpan={8}>
                   No carrier bid submissions have been uploaded yet.
                 </td>
               </tr>

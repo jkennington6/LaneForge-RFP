@@ -104,6 +104,7 @@ export async function GET(
         *,
         carrier_bid_submissions (
           carrier_name,
+          is_active,
           original_filename
         )
       `)
