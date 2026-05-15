@@ -357,6 +357,13 @@ export default async function RiskOpportunityAnalyticsPage({
             </Link>
 
             <Link
+              href={`/rfps/${rfp.id}/analytics/risk/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Export CSV
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}`}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
