@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
+import { CountBarChart } from "@/components/analytics-charts";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 
 type AnyRow = Record<string, any>;
@@ -304,6 +305,37 @@ export default async function BidCoverageAnalyticsPage({
         </div>
       </div>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+        <CountBarChart
+          title="Priced Lanes by Carrier"
+          description="How many lanes each carrier appears to have priced."
+          data={carrierCoverage.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.pricedLaneCount,
+            detail: `${percent(carrier.coveragePercent)} coverage - ${carrier.totalRateRows} rate row(s)`,
+          }))}
+        />
+
+        <CountBarChart
+          title="Rate Rows by Carrier"
+          description="Total submitted rate rows by carrier."
+          data={carrierCoverage.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.totalRateRows,
+            detail: `${carrier.pricedLaneCount} priced lane(s)`,
+          }))}
+        />
+
+        <CountBarChart
+          title="Lowest Coverage State Pairs"
+          description="State pairs with the fewest average carrier options."
+          data={statePairCoverage.slice(0, 12).map((row) => ({
+            label: row.laneStatePair,
+            value: Number((row.carrierOptionCount / Math.max(1, row.laneCount)).toFixed(1)),
+            detail: `${row.laneCount} lane(s), ${row.rateRowCount} rate row(s)`,
+          }))}
+        />
+      </div>
       <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-5">
           <h2 className="text-lg font-semibold text-slate-950">
@@ -347,6 +379,37 @@ export default async function BidCoverageAnalyticsPage({
         </div>
       </section>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+        <CountBarChart
+          title="Priced Lanes by Carrier"
+          description="How many lanes each carrier appears to have priced."
+          data={carrierCoverage.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.pricedLaneCount,
+            detail: `${percent(carrier.coveragePercent)} coverage - ${carrier.totalRateRows} rate row(s)`,
+          }))}
+        />
+
+        <CountBarChart
+          title="Rate Rows by Carrier"
+          description="Total submitted rate rows by carrier."
+          data={carrierCoverage.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.totalRateRows,
+            detail: `${carrier.pricedLaneCount} priced lane(s)`,
+          }))}
+        />
+
+        <CountBarChart
+          title="Lowest Coverage State Pairs"
+          description="State pairs with the fewest average carrier options."
+          data={statePairCoverage.slice(0, 12).map((row) => ({
+            label: row.laneStatePair,
+            value: Number((row.carrierOptionCount / Math.max(1, row.laneCount)).toFixed(1)),
+            detail: `${row.laneCount} lane(s), ${row.rateRowCount} rate row(s)`,
+          }))}
+        />
+      </div>
       <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-5">
           <h2 className="text-lg font-semibold text-slate-950">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
+import { CountBarChart, MoneyBarChart } from "@/components/analytics-charts";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 
 type AnyRow = Record<string, any>;
@@ -373,6 +374,49 @@ export default async function RfpGeographyAnalyticsPage({
         This page is the start of Power BI-style geography drilldown. State and ZIP3 views help identify where savings, cost increases, and incomplete award coverage are concentrated.
       </div>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        <MoneyBarChart
+          title="Top State-Pair Savings Impact"
+          description="Largest positive or negative savings impact by origin-destination state pair."
+          data={statePairRows.slice(0, 12).map((row) => ({
+            label: row.key,
+            value: row.savings,
+            detail: `${row.awardedLaneCount}/${row.laneCount} lane(s) awarded`,
+          }))}
+        />
+
+        <MoneyBarChart
+          title="Origin State Savings Impact"
+          description="Savings impact grouped by origin state."
+          data={originStateRows.slice(0, 12).map((row) => ({
+            label: row.key,
+            value: row.savings,
+            detail: `${row.shipmentCount.toLocaleString("en-US")} shipment(s)`,
+          }))}
+        />
+      </div>
+
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        <CountBarChart
+          title="Lane Count by Origin State"
+          description="Where the RFP lane volume originates."
+          data={originStateRows.slice(0, 12).map((row) => ({
+            label: row.key,
+            value: row.laneCount,
+            detail: `${row.awardedLaneCount} awarded lane(s)`,
+          }))}
+        />
+
+        <CountBarChart
+          title="Lane Count by Destination State"
+          description="Where the RFP lane volume delivers."
+          data={destinationStateRows.slice(0, 12).map((row) => ({
+            label: row.key,
+            value: row.laneCount,
+            detail: `${row.awardedLaneCount} awarded lane(s)`,
+          }))}
+        />
+      </div>
       <div className="space-y-6">
         <SummaryTable
           title="State-Pair Heat Map"

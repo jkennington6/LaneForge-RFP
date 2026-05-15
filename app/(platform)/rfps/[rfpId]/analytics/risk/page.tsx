@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
+import { CountBarChart, MoneyBarChart } from "@/components/analytics-charts";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 
 type AnyRow = Record<string, any>;
@@ -396,6 +397,56 @@ export default async function RiskOpportunityAnalyticsPage({
         </div>
       </div>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+        <CountBarChart
+          title="Risk Items by Severity"
+          description="High, medium, and low risk items currently identified."
+          data={[
+            {
+              label: "High Risk",
+              value: highRiskCount,
+              detail: "Unawarded or no-bid coverage concerns",
+            },
+            {
+              label: "Medium Risk",
+              value: mediumRiskCount,
+              detail: "Single-carrier or negative savings concerns",
+            },
+            {
+              label: "Low Risk",
+              value: lowRiskCount,
+              detail: "Baseline/data quality concerns",
+            },
+          ]}
+        />
+
+        <CountBarChart
+          title="Risk Items by Category"
+          description="Most common risk types in the current RFP."
+          data={Array.from(
+            riskRows.reduce((map, row) => {
+              map.set(row.category, (map.get(row.category) ?? 0) + 1);
+              return map;
+            }, new Map<string, number>())
+          )
+            .map(([label, value]) => ({
+              label,
+              value,
+              detail: "Risk item count",
+            }))
+            .sort((a, b) => b.value - a.value)}
+        />
+
+        <MoneyBarChart
+          title="Top Savings Opportunities"
+          description="Largest positive savings lanes from current awards."
+          data={topOpportunityRows.slice(0, 12).map((row) => ({
+            label: laneName(row.lane),
+            value: Number(row.savings ?? 0),
+            detail: String(row.award?.primary_carrier_name ?? "Awarded carrier"),
+          }))}
+        />
+      </div>
       <section className="mb-6 overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
         <div className="border-b border-red-200 bg-red-50 p-5">
           <h2 className="text-lg font-semibold text-red-950">
