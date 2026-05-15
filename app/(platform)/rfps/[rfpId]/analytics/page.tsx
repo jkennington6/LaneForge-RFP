@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
+import { AnalyticsDonut, CountBarChart, MoneyBarChart } from "@/components/analytics-charts";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 
 type AnyRow = Record<string, any>;
@@ -443,6 +444,58 @@ export default async function RfpAnalyticsPage({
         </div>
       </div>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+        <AnalyticsDonut
+          title="Award Coverage"
+          description="Formal award completion across all RFP lanes."
+          primaryLabel="Awarded lanes"
+          primaryValue={awardedLaneCount}
+          secondaryLabel="Unawarded lanes"
+          secondaryValue={unawardedLaneCount}
+        />
+
+        <MoneyBarChart
+          title="Awarded Spend by Carrier"
+          description="Largest awarded carrier positions by estimated awarded spend."
+          data={carrierSummary.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.awardedCost,
+            detail: `${carrier.laneCount} lane(s) - ${percent(totalAwardedCost > 0 ? carrier.awardedCost / totalAwardedCost : 0)} of awarded spend`,
+          }))}
+        />
+
+        <MoneyBarChart
+          title="Savings by State Pair"
+          description="Highest positive or negative savings impact by state pair."
+          data={statePairSummary.slice(0, 12).map((row) => ({
+            label: row.laneStatePair,
+            value: row.savings,
+            detail: `${row.awardedLaneCount}/${row.laneCount} lane(s) awarded`,
+          }))}
+        />
+      </div>
+
+      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+        <CountBarChart
+          title="Lane Awards by Carrier"
+          description="Primary award lane count by carrier."
+          data={carrierSummary.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.laneCount,
+            detail: `${carrier.shipmentCount.toLocaleString("en-US")} shipment(s) represented`,
+          }))}
+        />
+
+        <CountBarChart
+          title="Shipments by Awarded Carrier"
+          description="Shipment volume represented by each awarded carrier."
+          data={carrierSummary.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.shipmentCount,
+            detail: `${money(carrier.awardedCost)} awarded spend`,
+          }))}
+        />
+      </div>
       <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
         This dashboard is the start of LaneForge replacing separate Power BI workbooks for RFP review.
         It ties formal awards directly to spend, savings, carrier share, and geography.

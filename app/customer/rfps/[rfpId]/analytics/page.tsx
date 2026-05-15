@@ -5,6 +5,7 @@ import {
   getCustomerOrgIdsForCurrentUser,
 } from "@/lib/portal-access";
 import { createServiceSupabaseClient } from "@/lib/supabase";
+import { AnalyticsDonut, CountBarChart, MoneyBarChart } from "@/components/analytics-charts";
 
 type AnyRow = Record<string, any>;
 
@@ -220,6 +221,7 @@ export default async function CustomerRfpAnalyticsPage({
   const totalAwardedCost = awardedRows.reduce((sum, row) => sum + Number(row.awardedCost ?? 0), 0);
   const totalSavings = totalHistoricalSpend - totalAwardedCost;
   const totalSavingsPercent = totalHistoricalSpend > 0 ? totalSavings / totalHistoricalSpend : 0;
+  const unawardedLaneCount = Math.max(0, lanes.length - awardedRows.length);
 
   const carrierSummaryMap = new Map<string, CarrierSummary>();
 
@@ -365,6 +367,62 @@ export default async function CustomerRfpAnalyticsPage({
         </div>
       </div>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+        <AnalyticsDonut
+          title="Award Coverage"
+          description="Released award completion across customer-visible lanes."
+          primaryLabel="Awarded lanes"
+          primaryValue={awardedRows.length}
+          secondaryLabel="Unawarded lanes"
+          secondaryValue={unawardedLaneCount}
+        />
+
+        <CountBarChart
+          title="Lane Awards"
+          description="Released primary award lane count by carrier."
+          data={carrierSummary.map((carrier) => ({
+            label: carrier.carrierName,
+            value: carrier.laneCount,
+            detail: `${carrier.shipmentCount.toLocaleString("en-US")} shipment(s) represented`,
+          }))}
+        />
+
+        {release?.show_bid_amounts ? (
+          <MoneyBarChart
+            title="Awarded Spend"
+            description="Released awarded spend by carrier."
+            data={carrierSummary.map((carrier) => ({
+              label: carrier.carrierName,
+              value: carrier.awardedCost,
+              detail: `${carrier.laneCount} lane(s) awarded`,
+            }))}
+          />
+        ) : (
+          <CountBarChart
+            title="Carrier Shipment Share"
+            description="Released shipment volume by awarded carrier."
+            data={carrierSummary.map((carrier) => ({
+              label: carrier.carrierName,
+              value: carrier.shipmentCount,
+              detail: `${carrier.laneCount} lane(s) awarded`,
+            }))}
+          />
+        )}
+      </div>
+
+      {release?.show_savings && (
+        <div className="mb-6">
+          <MoneyBarChart
+            title="Savings by State Pair"
+            description="Released savings impact by state pair."
+            data={statePairSummary.slice(0, 12).map((row) => ({
+              label: row.laneStatePair,
+              value: row.savings,
+              detail: `${row.awardedLaneCount}/${row.laneCount} lane(s) awarded`,
+            }))}
+          />
+        </div>
+      )}
       <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-5">
           <h2 className="text-lg font-semibold text-slate-950">
