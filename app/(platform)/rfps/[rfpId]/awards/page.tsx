@@ -200,6 +200,130 @@ async function saveLaneAward(formData: FormData) {
   revalidatePath(`/rfps/${rfpId}/customer-release`);
 }
 
+
+async function generateMissingDraftAwards(formData: FormData) {
+  "use server";
+
+  const supabase = createServiceSupabaseClient();
+
+  const rfpId = String(formData.get("rfp_id") ?? "").trim();
+
+  if (!rfpId) {
+    throw new Error("RFP ID is required.");
+  }
+
+  const [lanesResult, ratesResult, awardsResult] = await Promise.all([
+    supabase
+      .from("shipment_lanes")
+      .select("*")
+      .eq("rfp_id", rfpId),
+
+    supabase
+      .from("carrier_bid_lane_rates")
+      .select(`
+        *,
+        carrier_bid_submissions (
+          carrier_name,
+          is_active
+        )
+      `)
+      .eq("rfp_id", rfpId),
+
+    supabase
+      .from("rfp_lane_awards")
+      .select("*")
+      .eq("rfp_id", rfpId),
+  ]);
+
+  if (lanesResult.error) {
+    throw new Error(lanesResult.error.message);
+  }
+
+  if (ratesResult.error) {
+    throw new Error(ratesResult.error.message);
+  }
+
+  if (awardsResult.error) {
+    throw new Error(awardsResult.error.message);
+  }
+
+  const lanes = (lanesResult.data ?? []) as AnyRow[];
+  const rates = ((ratesResult.data ?? []) as AnyRow[]).filter(isActiveRate);
+  const awards = (awardsResult.data ?? []) as AnyRow[];
+
+  const existingAwardsByLane = new Map<string, AnyRow>();
+
+  awards.forEach((award) => {
+    existingAwardsByLane.set(String(award.lane_id), award);
+  });
+
+  const now = new Date().toISOString();
+
+  const draftAwards = lanes
+    .map((lane) => {
+      const existingAward = existingAwardsByLane.get(String(lane.id));
+
+      if (existingAward?.primary_rate_id) {
+        return null;
+      }
+
+      const rankedRates: AnyRow[] = rates
+        .filter((rate) => matchesLane(rate, lane))
+        .map((rate) => ({
+          ...rate,
+          carrier_name: getCarrierName(rate),
+          estimated_cost: calculateEstimatedCost(rate, lane),
+        }))
+        .filter((rate) => rate.estimated_cost !== null)
+        .sort((a, b) => Number(a.estimated_cost) - Number(b.estimated_cost));
+
+      const primary = rankedRates[0] ?? null;
+      const backup = rankedRates[1] ?? null;
+      const third = rankedRates[2] ?? null;
+
+      if (!primary) {
+        return null;
+      }
+
+      return {
+        rfp_id: rfpId,
+        lane_id: lane.id,
+
+        primary_rate_id: primary.id,
+        backup_rate_id: backup?.id ?? null,
+        third_rate_id: third?.id ?? null,
+
+        primary_carrier_name: primary.carrier_name ?? null,
+        backup_carrier_name: backup?.carrier_name ?? null,
+        third_carrier_name: third?.carrier_name ?? null,
+
+        primary_estimated_cost: primary.estimated_cost ?? null,
+        backup_estimated_cost: backup?.estimated_cost ?? null,
+        third_estimated_cost: third?.estimated_cost ?? null,
+
+        award_status: "draft",
+        notes: "Auto-generated from lowest-cost active bid options.",
+        updated_at: now,
+      };
+    })
+    .filter((award) => award !== null) as AnyRow[];
+
+  if (draftAwards.length > 0) {
+    const { error: upsertError } = await supabase
+      .from("rfp_lane_awards")
+      .upsert(draftAwards as AnyRow[], {
+        onConflict: "rfp_id,lane_id",
+      });
+
+    if (upsertError) {
+      throw new Error(upsertError.message);
+    }
+  }
+
+  revalidatePath(`/rfps/${rfpId}/awards`);
+  revalidatePath(`/rfps/${rfpId}/routing-guide`);
+  revalidatePath(`/rfps/${rfpId}/awards/export`);
+}
 export default async function RfpAwardsPage({
   params,
 }: {
@@ -294,6 +418,17 @@ export default async function RfpAwardsPage({
         description={`${rfp.name} - convert draft routing recommendations into final lane awards`}
         action={
           <div className="flex flex-wrap gap-2">
+            <form action={generateMissingDraftAwards}>
+              <input type="hidden" name="rfp_id" value={rfp.id} />
+
+              <button
+                type="submit"
+                className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+              >
+                Generate Missing Awards
+              </button>
+            </form>
+
             <Link
               href={`/rfps/${rfp.id}/routing-guide`}
               className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
