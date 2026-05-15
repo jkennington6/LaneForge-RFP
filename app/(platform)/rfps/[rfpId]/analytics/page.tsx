@@ -322,6 +322,27 @@ export default async function RfpAnalyticsPage({
         action={
           <div className="flex flex-wrap gap-2">
             <Link
+              href={`/rfps/${rfp.id}/analytics/concentration`}
+              className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+            >
+              Concentration
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/analytics/savings`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Savings Bridge
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/analytics/readiness`}
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              Readiness
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}/analytics/executive`}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
