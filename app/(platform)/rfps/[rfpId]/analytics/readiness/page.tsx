@@ -236,6 +236,14 @@ export default async function AwardReadinessAnalyticsPage({
         description={`${rfp.name} - release readiness, award completeness, and cleanup queue`}
         action={
           <div className="flex flex-wrap gap-2">
+
+            <Link
+              href={`/rfps/${rfp.id}/analytics/readiness/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Export Readiness CSV
+            </Link>
+
             <Link href={`/rfps/${rfp.id}/analytics`} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Analytics
             </Link>

@@ -199,6 +199,14 @@ export default async function SavingsBridgeAnalyticsPage({
         description={`${rfp.name} - baseline to award spend bridge, offsets, and largest lane impacts`}
         action={
           <div className="flex flex-wrap gap-2">
+
+            <Link
+              href={`/rfps/${rfp.id}/analytics/savings/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Export Savings CSV
+            </Link>
+
             <Link href={`/rfps/${rfp.id}/analytics`} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Analytics
             </Link>
