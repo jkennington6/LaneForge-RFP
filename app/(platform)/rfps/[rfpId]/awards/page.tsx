@@ -444,6 +444,13 @@ export default async function RfpAwardsPage({
             </Link>
 
             <Link
+              href={`/rfps/${rfp.id}/awards/summary`}
+              className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+            >
+              Award Summary
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}/awards/export`}
               className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
             >
