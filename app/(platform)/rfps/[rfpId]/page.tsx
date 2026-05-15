@@ -1,9 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  requireCustomerPortalUser,
-  getCustomerOrgIdsForCurrentUser,
-} from "@/lib/portal-access";
 import { createServiceSupabaseClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -95,12 +91,6 @@ function formatDate(value: unknown) {
     month: "short",
     day: "numeric",
   });
-}
-
-function rowBelongsToAnyOrg(row: AnyRow, orgIds: string[]) {
-  if (!orgIds.length) return false;
-
-  return Object.values(row).some((value) => orgIds.includes(String(value)));
 }
 
 function sumRows(rows: AnyRow[], keys: string[]) {
@@ -252,22 +242,6 @@ export default async function CustomerRfpDetailPage({
 }) {
   const { rfpId } = await params;
 
-  const user = await requireCustomerPortalUser();
-  const customerOrgIds = (await getCustomerOrgIdsForCurrentUser(user)) ?? [];
-
-  if (!customerOrgIds.length) {
-    return (
-      <main className="p-6">
-        <h1 className="text-2xl font-bold text-slate-950">Customer RFP</h1>
-
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-          Your account is active, but it has not been linked to a customer organization yet.
-          Contact the Super Admin to complete setup.
-        </div>
-      </main>
-    );
-  }
-
   const supabase = createServiceSupabaseClient();
 
   const { data: rfp, error: rfpError } = await supabase
@@ -286,12 +260,7 @@ export default async function CustomerRfpDetailPage({
   }
 
   const rfpRow = rfp as AnyRow;
-
-  if (!rowBelongsToAnyOrg(rfpRow, customerOrgIds)) {
-    notFound();
-  }
-
-  const [
+const [
     laneResult,
     inviteResult,
     releaseResult,
