@@ -315,6 +315,13 @@ export default async function CustomerRfpAnalyticsPage({
         </div>
 
         <Link
+          href={`/customer/rfps/${rfpId}/analytics/executive`}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Executive Report
+        </Link>
+
+        <Link
           href={`/customer/rfps/${rfpId}/analytics/export`}
           className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
         >
