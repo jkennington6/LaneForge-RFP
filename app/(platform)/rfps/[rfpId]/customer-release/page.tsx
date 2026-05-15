@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
@@ -14,6 +15,86 @@ type ReleaseSettings = {
   show_award_recommendation: boolean;
   release_notes: string | null;
 };
+
+type ReleaseEvent = {
+  id: string;
+  rfp_id: string;
+  action: string;
+  preset: string | null;
+  settings_snapshot: Record<string, unknown> | null;
+  notes: string | null;
+  created_by_clerk_user_id: string | null;
+  created_at: string;
+};
+
+const defaultReleaseSettings: ReleaseSettings = {
+  rfp_id: "",
+  show_carrier_names: false,
+  show_bid_amounts: false,
+  show_savings: false,
+  show_comparisons: false,
+  show_routing_guide: false,
+  show_award_recommendation: false,
+  release_notes: null,
+};
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString();
+}
+
+function yesNo(value: boolean) {
+  return value ? "Yes" : "No";
+}
+
+function eventLabel(event: ReleaseEvent) {
+  if (event.action === "preset_apply") {
+    return `Preset applied: ${event.preset ?? "unknown"}`;
+  }
+
+  if (event.action === "manual_save") {
+    return "Manual settings save";
+  }
+
+  return event.action;
+}
+
+async function logReleaseEvent({
+  rfpId,
+  action,
+  preset,
+  settingsSnapshot,
+  notes,
+}: {
+  rfpId: string;
+  action: string;
+  preset?: string | null;
+  settingsSnapshot: Record<string, unknown>;
+  notes?: string | null;
+}) {
+  const supabase = createServiceSupabaseClient();
+  const { userId } = await auth();
+
+  const { error } = await supabase.from("rfp_customer_release_events").insert({
+    rfp_id: rfpId,
+    action,
+    preset: preset ?? null,
+    settings_snapshot: settingsSnapshot,
+    notes: notes ?? null,
+    created_by_clerk_user_id: userId ?? null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
 
 async function saveReleaseSettings(formData: FormData) {
   "use server";
@@ -48,8 +129,97 @@ async function saveReleaseSettings(formData: FormData) {
     throw new Error(error.message);
   }
 
+  await logReleaseEvent({
+    rfpId,
+    action: "manual_save",
+    settingsSnapshot: payload,
+    notes: payload.release_notes,
+  });
+
   revalidatePath(`/rfps/${rfpId}/customer-release`);
   revalidatePath(`/rfps/${rfpId}`);
+  revalidatePath(`/customer/rfps/${rfpId}`);
+}
+
+async function applyReleasePreset(formData: FormData) {
+  "use server";
+
+  const supabase = createServiceSupabaseClient();
+
+  const rfpId = String(formData.get("rfp_id") ?? "").trim();
+  const preset = String(formData.get("preset") ?? "").trim();
+
+  if (!rfpId || !preset) {
+    throw new Error("RFP ID and preset are required.");
+  }
+
+  const basePayload = {
+    rfp_id: rfpId,
+    show_carrier_names: false,
+    show_bid_amounts: false,
+    show_savings: false,
+    show_comparisons: false,
+    show_routing_guide: false,
+    show_award_recommendation: false,
+    release_notes: null as string | null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const payload =
+    preset === "lock_customer_view"
+      ? {
+          ...basePayload,
+          release_notes:
+            "Customer visibility is currently locked while the RFP is under internal review.",
+        }
+      : preset === "release_awards_only"
+        ? {
+            ...basePayload,
+            show_carrier_names: true,
+            show_routing_guide: true,
+            show_award_recommendation: true,
+            release_notes:
+              "Formal award recommendations have been released. Bid amounts, savings, and comparison details remain hidden.",
+          }
+        : preset === "full_customer_release"
+          ? {
+              ...basePayload,
+              show_carrier_names: true,
+              show_bid_amounts: true,
+              show_savings: true,
+              show_comparisons: true,
+              show_routing_guide: true,
+              show_award_recommendation: true,
+              release_notes:
+                "Full customer release is enabled, including carrier names, bid amounts, savings, comparisons, routing guide, and award recommendations.",
+            }
+          : null;
+
+  if (!payload) {
+    throw new Error("Unknown release preset.");
+  }
+
+  const { error } = await supabase
+    .from("rfp_customer_release_settings")
+    .upsert(payload, {
+      onConflict: "rfp_id",
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await logReleaseEvent({
+    rfpId,
+    action: "preset_apply",
+    preset,
+    settingsSnapshot: payload,
+    notes: payload.release_notes,
+  });
+
+  revalidatePath(`/rfps/${rfpId}/customer-release`);
+  revalidatePath(`/rfps/${rfpId}`);
+  revalidatePath(`/customer/rfps/${rfpId}`);
 }
 
 export default async function CustomerReleasePage({
@@ -60,7 +230,7 @@ export default async function CustomerReleasePage({
   const { rfpId } = await params;
   const supabase = createServiceSupabaseClient();
 
-  const [rfpResult, settingsResult] = await Promise.all([
+  const [rfpResult, settingsResult, eventsResult] = await Promise.all([
     supabase
       .from("rfps")
       .select("id, name, mode, status, bid_due_date")
@@ -75,6 +245,15 @@ export default async function CustomerReleasePage({
       )
       .eq("rfp_id", rfpId)
       .maybeSingle(),
+
+    supabase
+      .from("rfp_customer_release_events")
+      .select(
+        "id, rfp_id, action, preset, settings_snapshot, notes, created_by_clerk_user_id, created_at"
+      )
+      .eq("rfp_id", rfpId)
+      .order("created_at", { ascending: false })
+      .limit(25),
   ]);
 
   if (rfpResult.error || !rfpResult.data) {
@@ -85,19 +264,19 @@ export default async function CustomerReleasePage({
     throw new Error(settingsResult.error.message);
   }
 
+  if (eventsResult.error) {
+    throw new Error(eventsResult.error.message);
+  }
+
   const rfp = rfpResult.data;
 
   const settings: ReleaseSettings =
     settingsResult.data ?? {
+      ...defaultReleaseSettings,
       rfp_id: rfpId,
-      show_carrier_names: false,
-      show_bid_amounts: false,
-      show_savings: false,
-      show_comparisons: false,
-      show_routing_guide: false,
-      show_award_recommendation: false,
-      release_notes: null,
     };
+
+  const releaseEvents = (eventsResult.data ?? []) as ReleaseEvent[];
 
   return (
     <div>
@@ -111,6 +290,20 @@ export default async function CustomerReleasePage({
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Back to RFP
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/awards`}
+              className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              Awards
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/awards/summary`}
+              className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+            >
+              Award Summary
             </Link>
 
             <Link
@@ -131,9 +324,77 @@ export default async function CustomerReleasePage({
       />
 
       <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Keep these controls off until internal review is complete. Customers should not see carrier names,
-        pricing, savings, routing guides, or award recommendations until the 3PL/internal user explicitly releases them.
+        Keep customer release settings locked until internal review is complete. Customers should not see carrier names, pricing, savings, routing guides, or award recommendations until the managing organization explicitly releases them.
       </div>
+
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-950">Release Presets</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Use presets for common release stages. You can still manually adjust individual switches below.
+        </p>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <form
+            action={applyReleasePreset}
+            className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+          >
+            <input type="hidden" name="rfp_id" value={rfp.id} />
+            <input type="hidden" name="preset" value="lock_customer_view" />
+
+            <h3 className="font-semibold text-slate-950">Lock Customer View</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Turns everything off. Best while bids are still being reviewed internally.
+            </p>
+
+            <button
+              type="submit"
+              className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Apply Lockdown
+            </button>
+          </form>
+
+          <form
+            action={applyReleasePreset}
+            className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4"
+          >
+            <input type="hidden" name="rfp_id" value={rfp.id} />
+            <input type="hidden" name="preset" value="release_awards_only" />
+
+            <h3 className="font-semibold text-indigo-950">Release Awards Only</h3>
+            <p className="mt-1 text-sm text-indigo-800">
+              Releases carrier names, routing guide, and award recommendations without bid dollars or savings.
+            </p>
+
+            <button
+              type="submit"
+              className="mt-4 rounded-xl bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
+            >
+              Release Awards Only
+            </button>
+          </form>
+
+          <form
+            action={applyReleasePreset}
+            className="rounded-2xl border border-green-200 bg-green-50 p-4"
+          >
+            <input type="hidden" name="rfp_id" value={rfp.id} />
+            <input type="hidden" name="preset" value="full_customer_release" />
+
+            <h3 className="font-semibold text-green-950">Full Customer Release</h3>
+            <p className="mt-1 text-sm text-green-800">
+              Releases carrier names, bid amounts, savings, comparisons, routing guide, and awards.
+            </p>
+
+            <button
+              type="submit"
+              className="mt-4 rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800"
+            >
+              Release Everything
+            </button>
+          </form>
+        </div>
+      </section>
 
       <form
         action={saveReleaseSettings}
@@ -142,7 +403,7 @@ export default async function CustomerReleasePage({
         <input type="hidden" name="rfp_id" value={rfp.id} />
 
         <h2 className="text-lg font-semibold text-slate-950">
-          Release Settings
+          Manual Release Settings
         </h2>
 
         <p className="mt-1 text-sm text-slate-600">
@@ -179,7 +440,7 @@ export default async function CustomerReleasePage({
                 Show bid amounts
               </span>
               <span className="block text-sm text-slate-600">
-                Allows the customer to see pricing values from carrier bids.
+                Allows the customer to see pricing values from carrier bids and award costs.
               </span>
             </span>
           </label>
@@ -213,7 +474,7 @@ export default async function CustomerReleasePage({
                 Show comparisons
               </span>
               <span className="block text-sm text-slate-600">
-                Allows the customer to see comparison-level outputs.
+                Allows the customer to see comparison-level outputs and downloads.
               </span>
             </span>
           </label>
@@ -247,7 +508,7 @@ export default async function CustomerReleasePage({
                 Show award recommendation
               </span>
               <span className="block text-sm text-slate-600">
-                Allows the customer to see recommended award decisions.
+                Allows the customer to see formal award recommendations.
               </span>
             </span>
           </label>
@@ -268,9 +529,90 @@ export default async function CustomerReleasePage({
           type="submit"
           className="mt-6 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
         >
-          Save Release Settings
+          Save Manual Settings
         </button>
       </form>
+
+      <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 p-5">
+          <h2 className="text-lg font-semibold text-slate-950">
+            Release History
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Recent customer visibility changes for this RFP.
+          </p>
+        </div>
+
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Time</th>
+              <th className="px-4 py-3">Action</th>
+              <th className="px-4 py-3">Carrier Names</th>
+              <th className="px-4 py-3">Bid Amounts</th>
+              <th className="px-4 py-3">Savings</th>
+              <th className="px-4 py-3">Comparisons</th>
+              <th className="px-4 py-3">Routing</th>
+              <th className="px-4 py-3">Awards</th>
+              <th className="px-4 py-3">Notes</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-200">
+            {releaseEvents.map((event) => {
+              const snapshot = event.settings_snapshot ?? {};
+
+              return (
+                <tr key={event.id}>
+                  <td className="px-4 py-3 text-slate-600">
+                    {formatDate(event.created_at)}
+                  </td>
+
+                  <td className="px-4 py-3 font-semibold text-slate-950">
+                    {eventLabel(event)}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600">
+                    {yesNo(Boolean(snapshot.show_carrier_names))}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600">
+                    {yesNo(Boolean(snapshot.show_bid_amounts))}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600">
+                    {yesNo(Boolean(snapshot.show_savings))}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600">
+                    {yesNo(Boolean(snapshot.show_comparisons))}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600">
+                    {yesNo(Boolean(snapshot.show_routing_guide))}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600">
+                    {yesNo(Boolean(snapshot.show_award_recommendation))}
+                  </td>
+
+                  <td className="max-w-md px-4 py-3 text-slate-600">
+                    {event.notes ?? "-"}
+                  </td>
+                </tr>
+              );
+            })}
+
+            {!releaseEvents.length && (
+              <tr>
+                <td className="px-4 py-6 text-slate-500" colSpan={9}>
+                  No release history is available yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }
