@@ -321,6 +321,13 @@ export default async function RfpAnalyticsPage({
         action={
           <div className="flex flex-wrap gap-2">
             <Link
+              href={`/rfps/${rfp.id}/analytics/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Analytics CSV
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}/awards`}
               className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
             >
