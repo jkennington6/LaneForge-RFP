@@ -353,6 +353,13 @@ export default async function CustomerReleasePage({
         action={
           <div className="flex flex-wrap gap-2">
             <Link
+              href={`/rfps/${rfp.id}/readiness`}
+              className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100"
+            >
+              Readiness
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}`}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
