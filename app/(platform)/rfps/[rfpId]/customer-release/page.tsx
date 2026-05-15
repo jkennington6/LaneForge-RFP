@@ -63,6 +63,10 @@ function eventLabel(event: ReleaseEvent) {
     return "Manual settings save";
   }
 
+  if (event.action === "restore_snapshot") {
+    return "Restored previous release settings";
+  }
+
   return event.action;
 }
 
@@ -222,6 +226,69 @@ async function applyReleasePreset(formData: FormData) {
   revalidatePath(`/customer/rfps/${rfpId}`);
 }
 
+
+async function restoreReleaseSnapshot(formData: FormData) {
+  "use server";
+
+  const supabase = createServiceSupabaseClient();
+
+  const rfpId = String(formData.get("rfp_id") ?? "").trim();
+  const eventId = String(formData.get("event_id") ?? "").trim();
+
+  if (!rfpId || !eventId) {
+    throw new Error("RFP ID and release event ID are required.");
+  }
+
+  const { data: event, error: eventError } = await supabase
+    .from("rfp_customer_release_events")
+    .select("*")
+    .eq("id", eventId)
+    .eq("rfp_id", rfpId)
+    .single();
+
+  if (eventError || !event) {
+    throw new Error(eventError?.message ?? "Release event not found.");
+  }
+
+  const snapshot = (event.settings_snapshot ?? {}) as Record<string, any>;
+
+  const payload = {
+    rfp_id: rfpId,
+    show_carrier_names: Boolean(snapshot.show_carrier_names),
+    show_bid_amounts: Boolean(snapshot.show_bid_amounts),
+    show_savings: Boolean(snapshot.show_savings),
+    show_comparisons: Boolean(snapshot.show_comparisons),
+    show_routing_guide: Boolean(snapshot.show_routing_guide),
+    show_award_recommendation: Boolean(snapshot.show_award_recommendation),
+    release_notes:
+      typeof snapshot.release_notes === "string" && snapshot.release_notes.trim()
+        ? snapshot.release_notes.trim()
+        : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from("rfp_customer_release_settings")
+    .upsert(payload, {
+      onConflict: "rfp_id",
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await logReleaseEvent({
+    rfpId,
+    action: "restore_snapshot",
+    preset: event.preset ?? null,
+    settingsSnapshot: payload,
+    notes: `Restored settings from release history event ${eventId}.`,
+  });
+
+  revalidatePath(`/rfps/${rfpId}/customer-release`);
+  revalidatePath(`/rfps/${rfpId}`);
+  revalidatePath(`/customer/rfps/${rfpId}`);
+}
 export default async function CustomerReleasePage({
   params,
 }: {
@@ -297,6 +364,13 @@ export default async function CustomerReleasePage({
               className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
             >
               Awards
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/customer-release/export`}
+              className="rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+            >
+              Release History CSV
             </Link>
 
             <Link
@@ -555,6 +629,7 @@ export default async function CustomerReleasePage({
               <th className="px-4 py-3">Routing</th>
               <th className="px-4 py-3">Awards</th>
               <th className="px-4 py-3">Notes</th>
+              <th className="px-4 py-3">Restore</th>
             </tr>
           </thead>
 
@@ -599,13 +674,27 @@ export default async function CustomerReleasePage({
                   <td className="max-w-md px-4 py-3 text-slate-600">
                     {event.notes ?? "-"}
                   </td>
+
+                  <td className="px-4 py-3">
+                    <form action={restoreReleaseSnapshot}>
+                      <input type="hidden" name="rfp_id" value={rfp.id} />
+                      <input type="hidden" name="event_id" value={event.id} />
+
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                      >
+                        Restore
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               );
             })}
 
             {!releaseEvents.length && (
               <tr>
-                <td className="px-4 py-6 text-slate-500" colSpan={9}>
+                <td className="px-4 py-6 text-slate-500" colSpan={10}>
                   No release history is available yet.
                 </td>
               </tr>
