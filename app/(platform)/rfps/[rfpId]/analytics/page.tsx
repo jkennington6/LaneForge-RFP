@@ -328,6 +328,27 @@ export default async function RfpAnalyticsPage({
             </Link>
 
             <Link
+              href={`/rfps/${rfp.id}/analytics/geography`}
+              className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+            >
+              Geography
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/analytics/coverage`}
+              className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 hover:bg-cyan-100"
+            >
+              Coverage
+            </Link>
+
+            <Link
+              href={`/rfps/${rfp.id}/analytics/risk`}
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Risk
+            </Link>
+
+            <Link
               href={`/rfps/${rfp.id}/awards`}
               className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
             >

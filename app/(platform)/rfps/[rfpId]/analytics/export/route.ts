@@ -116,7 +116,7 @@ export async function GET(
   const carrierSummary = new Map<string, AnyRow>();
 
   awardedRows.forEach((row) => {
-    const carrierName = String(row.award.primary_carrier_name ?? "Unassigned");
+    const carrierName = String(row.award?.primary_carrier_name ?? "Unassigned");
 
     const existing =
       carrierSummary.get(carrierName) ??

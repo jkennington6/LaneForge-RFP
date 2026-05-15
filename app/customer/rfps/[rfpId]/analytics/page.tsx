@@ -99,7 +99,7 @@ export default async function CustomerRfpAnalyticsPage({
   const customerOrgIds = (await getCustomerOrgIdsForCurrentUser(user)) ?? [];
 
   if (!customerOrgIds.length) {
-    return new Response("Customer organization not linked.", { status: 403 });
+    notFound();
   }
 
   const supabase = createServiceSupabaseClient();
@@ -154,7 +154,26 @@ export default async function CustomerRfpAnalyticsPage({
   );
 
   if (!analyticsReleased) {
-    return new Response("Customer analytics have not been released.", { status: 403 });
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-10">
+        <Link
+          href={`/customer/rfps/${rfpId}`}
+          className="text-sm font-semibold text-slate-600 hover:text-slate-950"
+        >
+          Back to RFP
+        </Link>
+
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+          <h1 className="text-xl font-bold text-amber-950">
+            Analytics Not Released
+          </h1>
+
+          <p className="mt-2 text-sm">
+            Customer-facing analytics have not been released for this RFP yet.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const lanes = (lanesResult.data ?? []) as AnyRow[];
