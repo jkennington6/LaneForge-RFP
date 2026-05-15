@@ -30,6 +30,27 @@ export default async function TestLinksPage() {
 
   const coreRoutes = [
     {
+      label: "E2E RFP Test",
+      href: "/admin/e2e-rfp-test",
+      area: "Admin",
+      priority: "high" as const,
+      note: "Full mock RFP go-live rehearsal.",
+    },
+    {
+      label: "Security Matrix",
+      href: "/admin/security-matrix",
+      area: "Admin",
+      priority: "critical" as const,
+      note: "Role and visibility testing plan.",
+    },
+    {
+      label: "Data Quality",
+      href: "/admin/data-quality",
+      area: "Admin",
+      priority: "high" as const,
+      note: "Shipment lane and bid data quality readiness.",
+    },
+    {
       label: "Home",
       href: "/",
       area: "Public",

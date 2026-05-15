@@ -276,6 +276,27 @@ export default async function GoLiveReadinessPage() {
         description="Internal launch control center for LaneForge production stabilization, role testing, and beta readiness."
         action={
           <div className="flex flex-wrap gap-2">
+
+            <Link
+              href="/admin/e2e-rfp-test"
+              className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+            >
+              E2E Test
+            </Link>
+
+            <Link
+              href="/admin/security-matrix"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Security Matrix
+            </Link>
+
+            <Link
+              href="/admin/data-quality"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              Data Quality
+            </Link>
             <Link
               href="/rfps"
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -427,6 +448,27 @@ export default async function GoLiveReadinessPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+
+            <Link
+              href="/admin/e2e-rfp-test"
+              className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+            >
+              E2E Test
+            </Link>
+
+            <Link
+              href="/admin/security-matrix"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Security Matrix
+            </Link>
+
+            <Link
+              href="/admin/data-quality"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              Data Quality
+            </Link>
                     <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${priorityClass(test.priority)}`}>
                       {test.priority}
                     </span>
@@ -459,6 +501,27 @@ export default async function GoLiveReadinessPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+
+            <Link
+              href="/admin/e2e-rfp-test"
+              className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+            >
+              E2E Test
+            </Link>
+
+            <Link
+              href="/admin/security-matrix"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Security Matrix
+            </Link>
+
+            <Link
+              href="/admin/data-quality"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              Data Quality
+            </Link>
                     <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${priorityClass(test.priority)}`}>
                       {test.priority}
                     </span>
@@ -501,6 +564,27 @@ export default async function GoLiveReadinessPage() {
                 <td className="px-4 py-3 text-slate-600">{rfp.bid_due_date ?? "-"}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
+
+            <Link
+              href="/admin/e2e-rfp-test"
+              className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+            >
+              E2E Test
+            </Link>
+
+            <Link
+              href="/admin/security-matrix"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Security Matrix
+            </Link>
+
+            <Link
+              href="/admin/data-quality"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              Data Quality
+            </Link>
                     <Link
                       href={`/rfps/${rfp.id}`}
                       className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
